@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Screener MB">
+<meta name="theme-color" content="#ffffff">
+<title>Screener MB — Multibagger Analyser</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --bg:#ffffff;--bg2:#f7f7f5;--bg3:#f0efe9;
+    --txt:#1a1a1a;--txt2:#666;--txt3:#999;
+    --border:#e0dfd8;--border2:#ccc;
+    --purple-bg:#EEEDFE;--purple-txt:#3C3489;
+    --teal-bg:#E1F5EE;--teal-txt:#085041;
+    --amber-bg:#FAEEDA;--amber-txt:#633806;
+    --red-bg:#FCEBEB;--red-txt:#791F1F;
+    --radius:10px;--radius-sm:6px;
+    --shadow:0 1px 3px rgba(0,0,0,.08);
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#1a1a1a;--bg2:#242424;--bg3:#2e2e2e;
+      --txt:#f0f0f0;--txt2:#aaa;--txt3:#666;
+      --border:#333;--border2:#444;
+      --purple-bg:#26215C;--purple-txt:#CECBF6;
+      --teal-bg:#04342C;--teal-txt:#9FE1CB;
+      --amber-bg:#412402;--amber-txt:#FAC775;
+      --red-bg:#501313;--red-txt:#F7C1C1;
+    }
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--txt);min-height:100vh;font-size:15px}
+  .app{max-width:600px;margin:0 auto;background:var(--bg);min-height:100vh;display:flex;flex-direction:column}
+
+  /* Header */
+  .hdr{padding:16px 16px 0;background:var(--bg)}
+  .hdr-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .hdr-title{font-size:20px;font-weight:600;color:var(--txt)}
+  .hdr-sub{font-size:12px;color:var(--txt3);margin-top:1px}
+  .run-btn{display:flex;align-items:center;gap:6px;padding:10px 18px;background:var(--txt);color:var(--bg);border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap}
+  .run-btn:active{opacity:.7}
+  .run-btn:disabled{opacity:.4;cursor:not-allowed}
+  .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Status */
+  .status-strip{padding:8px 16px;font-size:12px;color:var(--txt2);background:var(--bg2);border-top:1px solid var(--border);min-height:34px;display:flex;align-items:center;gap:8px}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--txt3);flex-shrink:0}
+  .status-dot.running{background:#f59e0b;animation:pulse 1s ease-in-out infinite}
+  .status-dot.done{background:#10b981}
+  .status-dot.error{background:#ef4444}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  /* Metrics row */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 16px;background:var(--bg)}
+  .metric{background:var(--bg2);border-radius:var(--radius-sm);padding:10px 8px;text-align:center}
+  .metric .v{font-size:20px;font-weight:600;color:var(--txt)}
+  .metric .l{font-size:10px;color:var(--txt3);margin-top:1px}
+
+  /* Tabs */
+  .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg);overflow-x:auto;padding:0 16px}
+  .tab{padding:10px 12px;font-size:13px;font-weight:500;color:var(--txt2);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;cursor:pointer;flex-shrink:0}
+  .tab.active{color:var(--txt);border-bottom-color:var(--txt)}
+
+  /* Content */
+  .content{flex:1;overflow-y:auto;padding:12px 16px}
+  .panel{display:none}.panel.active{display:block}
+
+  /* API key setup */
+  .setup-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+  .setup-card h3{font-size:14px;font-weight:600;margin-bottom:8px}
+  .setup-card p{font-size:12px;color:var(--txt2);line-height:1.6;margin-bottom:10px}
+  .input-row{display:flex;gap:8px}
+  input[type=text],input[type=password]{flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg);color:var(--txt);font-size:13px;outline:none}
+  input:focus{border-color:var(--txt2)}
+  .save-btn{padding:9px 14px;background:var(--txt);color:var(--bg);border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .save-btn:active{opacity:.7}
+
+  /* Screener list */
+  .screen-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+  .screen-item:last-child{border-bottom:none}
+  .screen-name{font-size:13px;font-weight:500}
+  .screen-status{font-size:11px;color:var(--txt3)}
+  .screen-status.ok{color:#10b981}
+  .screen-status.err{color:#ef4444}
+  .screen-status.loading{color:#f59e0b}
+
+  /* Rank table */
+  .rank-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+  .rank-card.rank-1{border-left:3px solid #7F77DD}
+  .rank-card.rank-2{border-left:3px solid #1D9E75}
+  .rank-card.rank-3{border-left:3px solid #EF9F27}
+  .rank-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .rank-left{flex:1}
+  .rank-num{font-size:11px;color:var(--txt3);font-weight:500;margin-bottom:2px}
+  .rank-name{font-size:16px;font-weight:600;color:var(--txt)}
+  .rank-badges{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+  .b-hi{background:var(--purple-bg);color:var(--purple-txt)}
+  .b-med{background:var(--amber-bg);color:var(--amber-txt)}
+  .b-lo{background:var(--red-bg);color:var(--red-txt)}
+  .b-screen{background:var(--teal-bg);color:var(--teal-txt)}
+  .score-circle{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;border:2px solid var(--border);flex-shrink:0}
+  .score-circle .sv{font-size:16px;font-weight:700;color:var(--txt)}
+  .score-circle .sl{font-size:9px;color:var(--txt3)}
+  .rank-thesis{font-size:12px;color:var(--txt2);line-height:1.6;margin-bottom:6px;padding:8px;background:var(--bg2);border-radius:var(--radius-sm)}
+  .rank-risk{font-size:11px;color:var(--red-txt);background:var(--red-bg);padding:6px 8px;border-radius:var(--radius-sm)}
+  .rank-metrics{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .metric-pill{font-size:11px;background:var(--bg2);padding:3px 8px;border-radius:20px;color:var(--txt2)}
+  .metric-pill span{color:var(--txt);font-weight:500}
+
+  /* All stocks table */
+  .stock-row{padding:10px 0;border-bottom:1px solid var(--border)}
+  .stock-row:last-child{border-bottom:none}
+  .stock-row-top{display:flex;align-items:center;justify-content:space-between}
+  .stock-row-name{font-size:14px;font-weight:500}
+  .stock-row-cmp{font-size:14px;font-weight:600}
+  .stock-row-meta{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+
+  /* Journal */
+  .jentry{padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer}
+  .jentry:last-child{border-bottom:none}
+  .jentry:active{opacity:.7}
+  .jmeta{font-size:11px;color:var(--txt3)}
+  .jtitle{font-size:14px;font-weight:500;margin-top:2px}
+  .jprev{font-size:12px;color:var(--txt2);margin-top:2px;line-height:1.5}
+
+  /* Filter */
+  .filter-row{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+  .filter-chip{padding:6px 12px;border:1px solid var(--border2);border-radius:20px;font-size:12px;cursor:pointer;white-space:nowrap;background:var(--bg);color:var(--txt2);flex-shrink:0}
+  .filter-chip.active{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+
+  /* Empty state */
+  .empty{text-align:center;padding:40px 20px;color:var(--txt3)}
+  .empty-icon{font-size:40px;margin-bottom:8px}
+  .empty-text{font-size:14px}
+  .empty-sub{font-size:12px;margin-top:4px}
+
+  /* Export */
+  .action-row{display:flex;gap:8px;margin-bottom:12px}
+  .action-btn{flex:1;padding:9px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;background:var(--bg);color:var(--txt2);text-align:center}
+  .action-btn:active{opacity:.7}
+
+  /* CORS warning */
+  .warn-box{background:var(--amber-bg);border:1px solid var(--amber-txt);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--amber-txt);line-height:1.6}
+  .info-box{background:var(--teal-bg);border:1px solid var(--teal-txt);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--teal-txt);line-height:1.6}
+
+  /* Screener selector in settings */
+  .url-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+  .url-item:last-child{border-bottom:none}
+  .url-toggle{width:20px;height:20px;accent-color:var(--txt);cursor:pointer;flex-shrink:0}
+  .url-label{font-size:13px;flex:1}
+  .url-sub{font-size:10px;color:var(--txt3)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="hdr">
+    <div class="hdr-top">
+      <div>
+        <div class="hdr-title">&#x1F680; Screener MB</div>
+        <div class="hdr-sub" id="lastRunLabel">Multibagger analyser — tap RUN to start</div>
+      </div>
+      <button class="run-btn" id="runBtn" onclick="startRun()">
+        <div class="spin" id="spin"></div>
+        <span id="runLabel">&#9654; RUN</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="status-strip">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Ready</span>
+  </div>
+
+  <div class="metrics" id="metricsRow" style="display:none">
+    <div class="metric"><div class="v" id="mTotal">—</div><div class="l">Total</div></div>
+    <div class="metric"><div class="v" id="mUniq">—</div><div class="l">Unique</div></div>
+    <div class="metric"><div class="v" id="mHigh">—</div><div class="l">High ★</div></div>
+    <div class="metric"><div class="v" id="mScreens">7</div><div class="l">Screens</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('ranks')">Picks</div>
+    <div class="tab" onclick="switchTab('stocks')">All stocks</div>
+    <div class="tab" onclick="switchTab('journal')">Journal</div>
+    <div class="tab" onclick="switchTab('settings')">Settings</div>
+  </div>
+
+  <div class="content">
+
+    <!-- RANKS -->
+    <div id="panel-ranks" class="panel active">
+      <div id="corsWarn" class="warn-box" style="display:none">
+        ⚠️ Screener.in is blocking direct fetch (CORS). Use the <b>Cookie mode</b> in Settings — paste your screener session cookie once, and all future RUNs will work automatically.
+      </div>
+      <div class="filter-row" id="horizonFilter">
+        <div class="filter-chip active" onclick="filterHorizon(this,'')">All</div>
+        <div class="filter-chip" onclick="filterHorizon(this,'Short')">Short-term</div>
+        <div class="filter-chip" onclick="filterHorizon(this,'Medium')">Medium</div>
+        <div class="filter-chip" onclick="filterHorizon(this,'Long')">Long-term</div>
+        <div class="filter-chip" onclick="filterHorizon(this,'High')">High ★ only</div>
+      </div>
+      <div class="action-row">
+        <div class="action-btn" onclick="exportCSV()">&#8595; Export CSV</div>
+        <div class="action-btn" onclick="shareText()">&#8599; Share</div>
+      </div>
+      <div id="rankList"><div class="empty"><div class="empty-icon">&#128202;</div><div class="empty-text">No analysis yet</div><div class="empty-sub">Tap RUN to fetch all screeners and rank stocks</div></div></div>
+    </div>
+
+    <!-- ALL STOCKS -->
+    <div id="panel-stocks" class="panel">
+      <div class="filter-row" id="screenFilter"></div>
+      <div id="stockList"><div class="empty"><div class="empty-icon">&#128203;</div><div class="empty-text">No data yet</div><div class="empty-sub">Tap RUN to load</div></div></div>
+    </div>
+
+    <!-- JOURNAL -->
+    <div id="panel-journal" class="panel">
+      <div id="journalList"><div class="empty"><div class="empty-icon">&#128214;</div><div class="empty-text">No runs recorded yet</div></div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="panel-settings" class="panel">
+      <div class="setup-card">
+        <h3>&#128273; Anthropic API key</h3>
+        <p>Required for Claude to rank stocks. Get it free at console.anthropic.com → API Keys.</p>
+        <div class="input-row">
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-..." />
+          <div class="save-btn" onclick="saveApiKey()">Save</div>
+        </div>
+        <div id="apiKeyStatus" style="font-size:11px;color:var(--txt3);margin-top:6px"></div>
+      </div>
+
+      <div class="setup-card">
+        <h3>&#127850; Screener.in session cookie (optional but recommended)</h3>
+        <p>Screener.in blocks direct web requests from apps. To work around this, paste your <b>sessionid</b> cookie value here. This lets the app fetch data as if you're logged in.</p>
+        <p style="margin-top:4px">How to get it: Open screener.in in Chrome → DevTools (F12) → Application → Cookies → screener.in → copy the <b>sessionid</b> value.</p>
+        <div class="input-row">
+          <input type="text" id="cookieInput" placeholder="sessionid value..." />
+          <div class="save-btn" onclick="saveCookie()">Save</div>
+        </div>
+        <div id="cookieStatus" style="font-size:11px;color:var(--txt3);margin-top:6px"></div>
+      </div>
+
+      <div class="setup-card">
+        <h3>&#128203; Active screeners</h3>
+        <div id="urlList"></div>
+      </div>
+
+      <div class="setup-card">
+        <h3>&#128247; How to install as mobile app</h3>
+        <p><b>Android Chrome:</b> Tap the 3-dot menu → "Add to Home screen" → Add. It opens as a full-screen app.</p>
+        <p style="margin-top:6px"><b>iPhone Safari:</b> Tap Share button → "Add to Home Screen" → Add.</p>
+      </div>
+
+      <div class="setup-card" style="border-color:#ef4444">
+        <h3 style="color:#ef4444">&#128465; Clear all data</h3>
+        <p>Removes journal, API key, and cookie from this device.</p>
+        <div class="save-btn" style="background:#ef4444;margin-top:8px;display:inline-block" onclick="clearAll()">Clear everything</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var SCREENERS = [
+  {id:'s1', label:'2X in 6 months',        url:'https://www.screener.in/screens/3710377/2x-in-6-months/'},
+  {id:'s2', label:'20X in 3 years',         url:'https://www.screener.in/screens/3710380/20x-in-3-years/'},
+  {id:'s3', label:'100X moonshot 5yr',      url:'https://www.screener.in/screens/3710386/100x-moonshot-5-years/'},
+  {id:'s4', label:'Early infants',          url:'https://www.screener.in/screens/3710387/early-infants-pre-institution/'},
+  {id:'s5', label:'Qtr explosion',          url:'https://www.screener.in/screens/3710388/current-quarter-explosion/'},
+  {id:'s6', label:'Discovery funnel',       url:'https://www.screener.in/screens/3710492/moonshot-100x-discoery-funnel/'},
+  {id:'s7', label:'Quality funnel',         url:'https://www.screener.in/screens/3710516/moonshot-100x-quality-funnel/'}
+];
+
+var PROXY = 'https://api.allorigins.win/raw?url=';
+
+var state = {stocks:[], ranked:[], running:false, horizonFilter:''};
+var journal = [];
+try{ journal = JSON.parse(localStorage.getItem('mb_j')||'[]'); }catch(e){}
+
+function getKey(){ return localStorage.getItem('mb_key')||''; }
+function getCookie(){ return localStorage.getItem('mb_cookie')||''; }
+function getActiveScreeners(){
+  try{ return JSON.parse(localStorage.getItem('mb_screens')||'null') || SCREENERS.map(function(s){return s.id;}); }catch(e){ return SCREENERS.map(function(s){return s.id;}); }
+}
+
+function setStatus(msg, mode){
+  document.getElementById('statusText').textContent = msg;
+  var dot = document.getElementById('statusDot');
+  dot.className = 'status-dot'+(mode?' '+mode:'');
+}
+
+function setRunning(v){
+  state.running = v;
+  document.getElementById('runBtn').disabled = v;
+  document.getElementById('spin').style.display = v?'inline-block':'none';
+  document.getElementById('runLabel').textContent = v ? 'Running…' : '▶ RUN';
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(function(t,i){
+    t.classList.toggle('active',['ranks','stocks','journal','settings'][i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(function(p,i){
+    p.classList.toggle('active',['panel-ranks','panel-stocks','panel-journal','panel-settings'][i]==='panel-'+name);
+  });
+  if(name==='journal') renderJournal();
+  if(name==='settings') initSettings();
+}
+
+function filterHorizon(el, val){
+  document.querySelectorAll('#horizonFilter .filter-chip').forEach(function(c){c.classList.remove('active');});
+  el.classList.add('active');
+  state.horizonFilter = val;
+  renderRanks();
+}
+
+// ── FETCH ONE SCREENER ──────────────────────────────────────────────
+async function fetchScreener(s){
+  var cookie = getCookie();
+  var targetUrl = s.url;
+  var fetchUrl, headers = {};
+
+  if(cookie){
+    // Try direct with cookie via fetch (works if screener allows credentialed requests)
+    fetchUrl = targetUrl;
+    headers = {'Cookie':'sessionid='+cookie};
+  } else {
+    // CORS proxy fallback
+    fetchUrl = PROXY + encodeURIComponent(targetUrl);
+  }
+
+  var res = await fetch(fetchUrl, {headers: headers, mode: cookie?'cors':'cors'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  var html = await res.text();
+  return parseScreenerHTML(html, s);
+}
+
+function parseScreenerHTML(html, s){
+  var parser = new DOMParser();
+  var doc = parser.parseFromString(html, 'text/html');
+  var rows = [];
+  var tables = doc.querySelectorAll('table');
+  tables.forEach(function(table){
+    var headers = [];
+    var thead = table.querySelector('thead');
+    if(thead){
+      thead.querySelectorAll('th').forEach(function(th){ headers.push(th.textContent.trim()); });
+    }
+    var tbRows = table.querySelectorAll('tbody tr');
+    tbRows.forEach(function(tr){
+      var cells = tr.querySelectorAll('td');
+      if(cells.length < 3) return;
+      var obj = {screenId:s.id, screenLabel:s.label};
+      cells.forEach(function(td, i){
+        var key = headers[i] || 'col'+i;
+        var val = td.textContent.trim().replace(/\s+/g,' ');
+        obj[key] = val;
+      });
+      // normalise common fields
+      var nameEl = tr.querySelector('a');
+      if(nameEl) obj.name = nameEl.textContent.trim();
+      else obj.name = obj['Name'] || obj['name'] || '';
+      obj.cmp = obj['CMP Rs.']||obj['CMP']||'';
+      obj.marCap = obj['Mar Cap Rs.Cr.']||obj['Mar Cap']||'';
+      obj.pe = obj['P/E']||'';
+      obj.roce = obj['ROCE %']||'';
+      obj.roe = obj['ROE %']||'';
+      obj.opm = obj['OPM %']||'';
+      obj.npQtr = obj['NP Qtr Rs.Cr.']||'';
+      obj.qtrProfit = obj['Qtr Profit Var %']||'';
+      obj.salesQtr = obj['Sales Qtr Rs.Cr.']||'';
+      obj.qtrSales = obj['Qtr Sales Var %']||'';
+      obj.roa = obj['ROA 12M %']||'';
+      obj.debtEq = obj['Debt / Eq']||'';
+      if(obj.name) rows.push(obj);
+    });
+  });
+  return rows;
+}
+
+// ── MAIN RUN ────────────────────────────────────────────────────────
+async function startRun(){
+  if(state.running) return;
+  var key = getKey();
+  if(!key){ alert('Please add your Anthropic API key in Settings first.'); switchTab('settings'); return; }
+
+  setRunning(true);
+  document.getElementById('corsWarn').style.display = 'none';
+  document.getElementById('metricsRow').style.display = 'grid';
+  state.stocks = [];
+
+  var active = getActiveScreeners();
+  var activeScreeners = SCREENERS.filter(function(s){ return active.indexOf(s.id)>=0; });
+  document.getElementById('mScreens').textContent = activeScreeners.length;
+
+  var allStocks = [];
+  var corsBlocked = false;
+
+  for(var i=0; i<activeScreeners.length; i++){
+    var s = activeScreeners[i];
+    setStatus('Fetching '+s.label+' ('+(i+1)+'/'+activeScreeners.length+')...', 'running');
+    updateScreenStatus(s.id, 'loading', 'Fetching…');
+    try{
+      var stocks = await fetchScreener(s);
+      allStocks = allStocks.concat(stocks);
+      updateScreenStatus(s.id, 'ok', stocks.length+' stocks');
+    } catch(e){
+      corsBlocked = true;
+      updateScreenStatus(s.id, 'err', 'Failed: '+e.message);
+      setStatus('Failed: '+s.label+' — '+e.message, 'error');
+    }
+  }
+
+  if(corsBlocked && allStocks.length===0){
+    document.getElementById('corsWarn').style.display = 'block';
+    setStatus('All screeners blocked. See warning above.', 'error');
+    setRunning(false);
+    return;
+  }
+
+  if(corsBlocked) document.getElementById('corsWarn').style.display = 'block';
+
+  state.stocks = allStocks;
+  var uniq = dedup(allStocks);
+  document.getElementById('mTotal').textContent = allStocks.length;
+  document.getElementById('mUniq').textContent = uniq.length;
+
+  setStatus('Analysing '+uniq.length+' unique stocks with Claude…', 'running');
+
+  try{
+    var ranked = await analyseWithClaude(uniq, key);
+    state.ranked = ranked;
+    var high = ranked.filter(function(r){return r.conviction==='High';}).length;
+    document.getElementById('mHigh').textContent = high;
+    renderRanks();
+    renderStocks();
+    saveJournal(uniq, ranked);
+    document.getElementById('lastRunLabel').textContent = 'Last run: '+fmtDate(new Date());
+    setStatus('Done — '+ranked.length+' stocks ranked, '+high+' high conviction picks ★', 'done');
+  } catch(e){
+    setStatus('Claude API error: '+e.message, 'error');
+  }
+
+  setRunning(false);
+}
+
+function dedup(stocks){
+  var seen = {}, out = [];
+  stocks.forEach(function(s){
+    if(!s.name) return;
+    var k = s.name.toLowerCase().trim();
+    if(!seen[k]){ seen[k]={...s, screens:[s.screenLabel], screenIds:[s.screenId]}; out.push(seen[k]); }
+    else{ seen[k].screens.push(s.screenLabel); seen[k].screenIds.push(s.screenId); }
+  });
+  out.forEach(function(s){ s.screensCount = s.screens.length; });
+  return out;
+}
+
+// ── CLAUDE ANALYSIS ─────────────────────────────────────────────────
+async function analyseWithClaude(stocks, apiKey){
+  var csv = stocks.map(function(s){
+    return [s.name,s.cmp,s.marCap,s.pe,s.roce,s.roe,s.npQtr,s.qtrProfit,s.salesQtr,s.qtrSales,s.opm,s.roa,s.debtEq,s.screensCount,(s.screens||[]).join('|')].join(',');
+  }).join('\n');
+
+  var sys = `You are a sharp Indian equity analyst. Rank these screener-filtered stocks by multibagger potential.
+Return ONLY a JSON array (no markdown, no preamble). Each item:
+{
+  "name": string (exact match),
+  "score": number 1-10,
+  "conviction": "High"|"Medium"|"Low",
+  "horizon": "Short"|"Medium"|"Long",
+  "thesis": string (2 sentences, cite specific numbers),
+  "risk": string (1 sentence),
+  "screens_count": number
+}
+Sort by score descending. High conviction = score 8+.`;
+
+  var resp = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1500,
+      system:sys,
+      messages:[{role:'user',content:'Stocks (name,CMP,MarCap,PE,ROCE,ROE,NPQtr,QtrProfitVar%,SalesQtr,QtrSalesVar%,OPM,ROA,DebtEq,ScreensCount,Screens):\n'+csv}]
+    })
+  });
+  if(!resp.ok){ var e=await resp.json(); throw new Error(e.error&&e.error.message||resp.status); }
+  var data = await resp.json();
+  var text = data.content.map(function(b){return b.text||'';}).join('').replace(/```json|```/g,'').trim();
+  return JSON.parse(text);
+}
+
+// ── RENDER RANKS ────────────────────────────────────────────────────
+function renderRanks(){
+  var hf = state.horizonFilter;
+  var rows = state.ranked.filter(function(r){
+    if(hf==='High') return r.conviction==='High';
+    if(hf==='Short'||hf==='Medium'||hf==='Long') return r.horizon===hf;
+    return true;
+  });
+
+  if(!rows.length){
+    document.getElementById('rankList').innerHTML = '<div class="empty"><div class="empty-icon">&#128202;</div><div class="empty-text">No results</div></div>';
+    return;
+  }
+
+  // find original stock data for metrics
+  var stockMap = {};
+  state.stocks.forEach(function(s){ stockMap[s.name]=s; });
+
+  document.getElementById('rankList').innerHTML = rows.map(function(r,i){
+    var bc = r.conviction==='High'?'b-hi':r.conviction==='Medium'?'b-med':'b-lo';
+    var hc = r.horizon==='Short'?'b-hi':r.horizon==='Long'?'b-screen':'b-med';
+    var rc = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+    var s = stockMap[r.name]||{};
+    var screensCount = r.screens_count||s.screensCount||1;
+    return '<div class="rank-card '+rc+'">'+
+      '<div class="rank-hdr">'+
+        '<div class="rank-left">'+
+          '<div class="rank-num">Rank #'+(i+1)+(screensCount>1?' · appeared in '+screensCount+' screeners':'')+'</div>'+
+          '<div class="rank-name">'+esc(r.name)+'</div>'+
+          '<div class="rank-badges">'+
+            '<span class="badge '+bc+'">'+esc(r.conviction)+'</span>'+
+            '<span class="badge '+hc+'">'+esc(r.horizon)+'-term</span>'+
+            (screensCount>1?'<span class="badge b-screen">'+screensCount+' screens</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<div class="score-circle"><div class="sv">'+r.score+'</div><div class="sl">/10</div></div>'+
+      '</div>'+
+      '<div class="rank-thesis">'+esc(r.thesis)+'</div>'+
+      '<div class="rank-risk">&#9888; '+esc(r.risk)+'</div>'+
+      (s.cmp?'<div class="rank-metrics">'+
+        (s.cmp?'<span class="metric-pill">CMP <span>&#8377;'+esc(s.cmp)+'</span></span>':'')+
+        (s.pe?'<span class="metric-pill">P/E <span>'+esc(s.pe)+'</span></span>':'')+
+        (s.roce?'<span class="metric-pill">ROCE <span>'+esc(s.roce)+'%</span></span>':'')+
+        (s.roe?'<span class="metric-pill">ROE <span>'+esc(s.roe)+'%</span></span>':'')+
+        (s.marCap?'<span class="metric-pill">MCap <span>'+esc(s.marCap)+'Cr</span></span>':'')+
+      '</div>':'')+
+    '</div>';
+  }).join('');
+}
+
+// ── RENDER ALL STOCKS ───────────────────────────────────────────────
+function renderStocks(){
+  var sf = document.getElementById('activeScreenFilter')||{value:''};
+  var deduped = dedup(state.stocks);
+
+  // build screen filter chips
+  var fc = document.getElementById('screenFilter');
+  fc.innerHTML = '<div class="filter-chip active" id="sfAll" onclick="filterScreen(this,\'\')">All</div>'+
+    SCREENERS.map(function(s){
+      return '<div class="filter-chip" onclick="filterScreen(this,\''+s.id+'\')">'+esc(s.label)+'</div>';
+    }).join('');
+
+  var rows = deduped;
+  document.getElementById('stockList').innerHTML = rows.map(function(s){
+    return '<div class="stock-row">'+
+      '<div class="stock-row-top">'+
+        '<div class="stock-row-name">'+esc(s.name)+'</div>'+
+        '<div class="stock-row-cmp">&#8377;'+esc(s.cmp)+'</div>'+
+      '</div>'+
+      '<div class="stock-row-meta">'+
+        (s.pe?'<span class="badge b-screen">P/E '+esc(s.pe)+'</span>':'')+
+        (s.roce?'<span class="badge b-screen">ROCE '+esc(s.roce)+'%</span>':'')+
+        (s.roe?'<span class="badge b-screen">ROE '+esc(s.roe)+'%</span>':'')+
+        (s.qtrProfit?'<span class="badge b-hi">Qtr PAT +'+esc(s.qtrProfit)+'%</span>':'')+
+        s.screens.map(function(sc){return '<span class="badge b-med">'+esc(sc)+'</span>';}).join('')+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+var _sfActive = '';
+function filterScreen(el, sid){
+  document.querySelectorAll('#screenFilter .filter-chip').forEach(function(c){c.classList.remove('active');});
+  el.classList.add('active');
+  _sfActive = sid;
+  var deduped = sid ? state.stocks.filter(function(s){return s.screenId===sid;}) : dedup(state.stocks);
+  if(!sid) deduped = dedup(state.stocks);
+  else { var d2=[]; var seen={}; state.stocks.filter(function(s){return s.screenId===sid;}).forEach(function(s){if(!seen[s.name]){seen[s.name]=true;d2.push(s);}});deduped=d2; }
+  document.getElementById('stockList').innerHTML = deduped.map(function(s){
+    return '<div class="stock-row">'+
+      '<div class="stock-row-top"><div class="stock-row-name">'+esc(s.name)+'</div><div class="stock-row-cmp">&#8377;'+esc(s.cmp)+'</div></div>'+
+      '<div class="stock-row-meta">'+
+        (s.pe?'<span class="badge b-screen">P/E '+esc(s.pe)+'</span>':'')+
+        (s.roce?'<span class="badge b-screen">ROCE '+esc(s.roce)+'%</span>':'')+
+        (s.roe?'<span class="badge b-screen">ROE '+esc(s.roe)+'%</span>':'')+
+      '</div></div>';
+  }).join('');
+}
+
+// ── JOURNAL ─────────────────────────────────────────────────────────
+function saveJournal(stocks, ranked){
+  var entry = {
+    ts: new Date().toISOString(),
+    count: stocks.length,
+    topPicks: ranked.slice(0,3).map(function(r){return r.name;}),
+    summary: ranked.slice(0,5).map(function(r){return r.name+' ('+r.score+')';}).join(', '),
+    ranked: ranked,
+    stocks: stocks
+  };
+  journal.unshift(entry);
+  if(journal.length>40) journal.pop();
+  try{ localStorage.setItem('mb_j', JSON.stringify(journal)); }catch(e){}
+}
+
+function renderJournal(){
+  if(!journal.length){ document.getElementById('journalList').innerHTML='<div class="empty"><div class="empty-icon">&#128214;</div><div class="empty-text">No runs yet</div></div>'; return; }
+  document.getElementById('journalList').innerHTML = journal.map(function(e,i){
+    return '<div class="jentry" onclick="loadEntry('+i+')">'+
+      '<div class="jmeta">'+fmtDate(new Date(e.ts))+' · '+e.count+' stocks</div>'+
+      '<div class="jtitle">Top: '+esc(e.topPicks.join(', '))+'</div>'+
+      '<div class="jprev">'+esc(e.summary)+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function loadEntry(i){
+  var e = journal[i];
+  state.ranked = e.ranked; state.stocks = e.stocks;
+  document.getElementById('mTotal').textContent = e.stocks.length;
+  document.getElementById('mUniq').textContent = e.count;
+  document.getElementById('mHigh').textContent = e.ranked.filter(function(r){return r.conviction==='High';}).length;
+  document.getElementById('metricsRow').style.display='grid';
+  document.getElementById('lastRunLabel').textContent='Loaded: '+fmtDate(new Date(e.ts));
+  renderRanks();
+  renderStocks();
+  switchTab('ranks');
+}
+
+// ── SETTINGS ────────────────────────────────────────────────────────
+function initSettings(){
+  var k = getKey();
+  document.getElementById('apiKeyInput').value = k ? k.slice(0,10)+'…' : '';
+  document.getElementById('apiKeyStatus').textContent = k ? '✓ API key saved' : 'No key saved yet';
+  var c = getCookie();
+  document.getElementById('cookieInput').value = c ? c.slice(0,12)+'…' : '';
+  document.getElementById('cookieStatus').textContent = c ? '✓ Cookie saved' : 'No cookie saved — fetches will use CORS proxy';
+  renderUrlList();
+}
+
+function renderUrlList(){
+  var active = getActiveScreeners();
+  document.getElementById('urlList').innerHTML = SCREENERS.map(function(s){
+    var checked = active.indexOf(s.id)>=0;
+    return '<div class="url-item">'+
+      '<input type="checkbox" class="url-toggle" '+(checked?'checked':'')+' onchange="toggleScreen(\''+s.id+'\',this.checked)">'+
+      '<div><div class="url-label">'+esc(s.label)+'</div><div class="url-sub">'+esc(s.url)+'</div></div>'+
+    '</div>';
+  }).join('');
+}
+
+function toggleScreen(id, on){
+  var active = getActiveScreeners();
+  if(on && active.indexOf(id)<0) active.push(id);
+  if(!on) active = active.filter(function(x){return x!==id;});
+  localStorage.setItem('mb_screens', JSON.stringify(active));
+  document.getElementById('mScreens').textContent = active.length;
+}
+
+function saveApiKey(){
+  var v = document.getElementById('apiKeyInput').value.trim();
+  if(!v||v.indexOf('…')>0){ alert('Please enter your full API key'); return; }
+  localStorage.setItem('mb_key', v);
+  document.getElementById('apiKeyStatus').textContent = '✓ Saved! Key: '+v.slice(0,10)+'…';
+}
+
+function saveCookie(){
+  var v = document.getElementById('cookieInput').value.trim();
+  if(!v||v.indexOf('…')>0){ alert('Please enter the full sessionid value'); return; }
+  localStorage.setItem('mb_cookie', v);
+  document.getElementById('cookieStatus').textContent = '✓ Cookie saved. Direct fetch enabled.';
+}
+
+function updateScreenStatus(id, status, msg){
+  // reflected in settings if open
+}
+
+function clearAll(){
+  if(!confirm('Clear all data including API key, cookie and journal?')) return;
+  localStorage.clear();
+  journal = [];
+  state = {stocks:[], ranked:[], running:false, horizonFilter:''};
+  alert('Cleared. Reload the page.');
+}
+
+// ── EXPORT ──────────────────────────────────────────────────────────
+function exportCSV(){
+  if(!state.ranked.length){ alert('Run analysis first'); return; }
+  var rows=[['Rank','Name','Score','Conviction','Horizon','Thesis','Risk','Screens']];
+  state.ranked.forEach(function(r,i){
+    rows.push([i+1,r.name,r.score,r.conviction,r.horizon,'"'+r.thesis+'"','"'+r.risk+'"',r.screens_count]);
+  });
+  var csv = rows.map(function(r){return r.join(',');}).join('\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'MB_ranked_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+function shareText(){
+  if(!state.ranked.length){ alert('Run analysis first'); return; }
+  var text = 'Screener MB — Top Picks ('+fmtDate(new Date())+')\n\n'+
+    state.ranked.slice(0,5).map(function(r,i){
+      return (i+1)+'. '+r.name+' — Score '+r.score+'/10 ('+r.conviction+')\n'+r.thesis;
+    }).join('\n\n');
+  if(navigator.share){ navigator.share({title:'Screener MB Picks', text:text}); }
+  else{ navigator.clipboard.writeText(text).then(function(){alert('Copied to clipboard!');}).catch(function(){alert(text);}); }
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(d){ return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}); }
+
+// Load last journal entry on start
+if(journal.length){ loadEntry(0); setStatus('Last run loaded. Tap RUN to refresh.','done'); }
+</script>
+</body>
+</html>
