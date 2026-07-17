@@ -185,7 +185,7 @@ input:focus{border-color:var(--txt2)}
   <!-- PICKS -->
   <div id="tab-picks" class="panel active">
     <div id="corsBox" style="display:none" class="warn-box">
-      ⚠️ <b>Screener.in blocked the request (CORS).</b> This is normal — browsers prevent websites from fetching other websites directly. Use the workaround below: open your screener URLs in this browser, Claude will scrape them for you via the chat.
+      ⚠️ <b>Couldn't fetch any screeners.</b> This app routes requests through free public CORS proxies (since screener.in blocks direct browser access), and all of them failed to respond — they're occasionally down or rate-limited. Wait a minute and tap RUN again. Also make sure each screen in Settings is a <b>public</b> screen (proxies can't carry your screener.in login, so private screens won't load).
     </div>
     <div class="chips" id="hChips">
       <div class="chip on" onclick="hFilter(this,'')">All</div>
@@ -234,13 +234,13 @@ input:focus{border-color:var(--txt2)}
     </div>
 
     <div class="solution-box">
-      <h3>&#128161; How RUN works on mobile / any browser</h3>
-      <p>Because Screener.in blocks direct fetches, when you tap RUN the app automatically opens each screener URL in a new tab, scrapes the table, and closes it. This requires you to be <b>logged in to Screener.in</b> in the same browser.</p>
+      <h3>&#128161; How RUN works</h3>
+      <p>Screener.in blocks direct browser fetches, so when you tap RUN the app routes each screener URL through free public CORS proxies (trying a couple in case one is down) and parses the returned table — no login, no popups.</p>
       <ol>
-        <li>Log in to screener.in once in this browser</li>
-        <li>Come back here and tap RUN</li>
-        <li>New tabs will open briefly and close — that is normal</li>
-        <li>Results appear automatically</li>
+        <li>Screens must be <b>public</b> screener.in screens (proxies can't send your login cookie)</li>
+        <li>Tap RUN — each screen is fetched via proxy in turn</li>
+        <li>If a proxy is down or rate-limited it's skipped and the next one is tried</li>
+        <li>Results appear automatically once all screens are fetched</li>
       </ol>
     </div>
 
@@ -304,29 +304,40 @@ function goTab(name){
   if(name==='settings')initSettings();
 }
 
-// ── IFRAME SCRAPER ────────────────────────────────────────────────
-// Opens each screener in a hidden iframe, reads table after load
-function scrapeViaIframe(screen){
-  return new Promise(function(resolve, reject){
-    var timeout = setTimeout(function(){ reject(new Error('Timeout')); }, 15000);
-    var iframe = document.createElement('iframe');
-    iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:1200px;height:800px;opacity:0;pointer-events:none';
-    iframe.src = screen.url;
-    iframe.onload = function(){
-      clearTimeout(timeout);
-      try{
-        var doc = iframe.contentDocument || iframe.contentWindow.document;
-        var stocks = parseDoc(doc, screen);
-        document.body.removeChild(iframe);
-        resolve(stocks);
-      } catch(e){
-        document.body.removeChild(iframe);
-        reject(e);
-      }
-    };
-    iframe.onerror = function(){ clearTimeout(timeout); document.body.removeChild(iframe); reject(new Error('iframe error')); };
-    document.body.appendChild(iframe);
-  });
+// ── CORS-PROXY SCRAPER ────────────────────────────────────────────
+// screener.in sends X-Frame-Options:DENY and no CORS headers, so it can't be
+// iframed or fetched directly from a browser. We route the fetch through a
+// public CORS proxy instead. These free proxies are occasionally down or
+// rate-limited, so we try a few in order and use whichever responds first.
+var PROXIES=[
+  function(u){return 'https://api.allorigins.win/raw?url='+encodeURIComponent(u);},
+  function(u){return 'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(u);},
+  function(u){return 'https://corsproxy.io/?url='+encodeURIComponent(u);}
+];
+
+function fetchWithTimeout(url,ms){
+  var ctrl=new AbortController();
+  var t=setTimeout(function(){ctrl.abort();},ms);
+  return fetch(url,{signal:ctrl.signal}).finally(function(){clearTimeout(t);});
+}
+
+async function scrapeViaProxy(screen){
+  var lastErr;
+  for(var i=0;i<PROXIES.length;i++){
+    try{
+      var r=await fetchWithTimeout(PROXIES[i](screen.url),15000);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var html=await r.text();
+      if(!html || html.length<200) throw new Error('Empty response');
+      var doc=new DOMParser().parseFromString(html,'text/html');
+      var stocks=parseDoc(doc,screen);
+      if(!stocks.length) throw new Error('No table rows found (screen may require login)');
+      return stocks;
+    }catch(e){
+      lastErr=e;
+    }
+  }
+  throw new Error((lastErr&&lastErr.message)||'All proxies failed');
 }
 
 function parseDoc(doc, screen){
@@ -377,7 +388,7 @@ async function startRun(){
     var sc=screens[i];
     setStatus('Fetching '+sc.label+' ('+(i+1)+'/'+screens.length+')…','run');
     try{
-      var stocks=await scrapeViaIframe(sc);
+      var stocks=await scrapeViaProxy(sc);
       all=all.concat(stocks);
     }catch(e){
       failed++;
