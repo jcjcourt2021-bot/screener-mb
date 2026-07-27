@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top"><meta charset="utf-8">
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161c24; --card:#1b232d; --line:#2a343f;
+    --ink:#e6ebf1; --muted:#8b98a7; --accent:#c8956d; --accent2:#6fae86;
+    --sel:#2d6cdf; --sel2:#244a86; --warn:#d98b4a; --err:#e0736b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Segoe UI",Roboto,Georgia,serif;line-height:1.55;font-size:15px}
+  a{color:var(--accent)}
+  .top{background:var(--panel);border-bottom:1px solid var(--line);padding:12px 20px 0;
+       position:sticky;top:0;z-index:30}
+  .toprow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .brand{font-size:18px;font-weight:700;white-space:nowrap;color:#fff;letter-spacing:.3px}
+  .sbox{flex:1;display:flex;gap:7px;min-width:260px}
+  .sbox input{flex:1;font-size:15px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;
+       background:#10161d;color:var(--ink);outline:none}
+  .sbox input:focus{border-color:var(--accent)}
+  .btn{font-size:12.5px;font-weight:600;padding:10px 15px;border:none;border-radius:9px;cursor:pointer;
+       color:#fff;background:var(--accent);white-space:nowrap}
+  .btn.run{background:var(--accent2)} .btn.ghost{background:#2b3742}
+  .btn:disabled{opacity:.5;cursor:default}
+  #pendN{margin-left:5px;opacity:.85}
+  /* master tiles */
+  .tiles{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0;padding-bottom:11px}
+  .tile{font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid var(--line);
+        background:#1c242e;color:#c4d0dc;cursor:pointer;white-space:nowrap;transition:all .12s}
+  .tile:hover{border-color:var(--accent);color:#fff}
+  .tile.on{background:var(--sel);border-color:var(--sel);color:#fff}   /* high contrast when selected */
+  .tile .n{opacity:.7;font-size:11px;margin-left:6px}
+  /* secondary bar */
+  .subbar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:10px 0 0;border-top:1px solid var(--line)}
+  .subbar .chip{font-size:12px;padding:6px 12px;border-radius:7px;border:1px solid var(--line);
+        background:#141b22;color:#b9c6d3;cursor:pointer}
+  .subbar .chip:hover{border-color:var(--accent);color:#fff}
+  .subbar .chip.on{background:var(--sel2);border-color:var(--sel);color:#fff}
+  .wrap{display:flex;align-items:stretch;min-height:calc(100vh - 120px)}
+  .side{width:250px;flex:none;background:var(--panel);border-right:1px solid var(--line);padding:14px 12px 60px;overflow:auto}
+  .side h4{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:2px 0 10px}
+  .side .it{padding:9px 11px;border-radius:7px;border:1px solid transparent;cursor:pointer;font-size:13.5px;
+       color:#c9d5e1;margin-bottom:4px;display:flex;justify-content:space-between;gap:8px}
+  .side .it:hover{background:#1d2530;border-color:var(--line)}
+  .side .it.on{background:var(--sel2);border-color:var(--sel);color:#fff}
+  .side .it .n{font-size:11px;color:var(--muted)}
+  .side.empty{display:none}
+  .main{flex:1;min-width:0;padding:18px 22px 80px}
+  .status{width:270px;flex:none;background:var(--panel);border-left:1px solid var(--line);padding:16px 14px 60px;
+       position:sticky;top:120px;height:calc(100vh - 120px);overflow:auto}
+  .status h4{font-size:12px;margin:0 0 10px;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em}
+  .status .l{font-size:12px;color:#b9c6d3;padding:6px 0;border-bottom:1px solid #222c36;white-space:pre-wrap;word-break:break-word}
+  .status .l.err{color:var(--err)}
+  .status .run{font-size:12.5px;color:var(--accent2);margin-bottom:8px}
+  .bar h2{font-size:20px;margin:0 0 3px;color:#fff}
+  .bar .sub{font-size:12.5px;color:var(--muted);margin-bottom:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 18px;margin:11px 0}
+  .card .t{font-size:15.5px;font-weight:600;margin:0;color:#eef3f8}
+  .card .m{font-size:12px;color:var(--muted);margin-top:3px}
+  .card .s{font-size:13.5px;color:#c2ccd6;margin-top:8px;white-space:pre-wrap}
+  .card .a{margin-top:11px;display:flex;gap:16px;flex-wrap:wrap}
+  .card .a a,.card .a button{font-size:12.5px;color:var(--accent);background:none;border:none;padding:0;
+       cursor:pointer;text-decoration:none;font-weight:600}
+  .card .a a:hover{text-decoration:underline}
+  .tagr{float:right;font-size:11px;padding:2px 9px;border-radius:999px;background:#243441;color:var(--accent);font-weight:600}
+  .via{font-size:10.5px;color:#5f6d7c;margin-left:6px;font-weight:400}
+  .hint{font-size:12.5px;color:var(--muted)}
+  .form{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent2);
+        border-radius:10px;padding:18px 20px;margin:12px 0}
+  .form h3{margin:0 0 6px;font-size:16px;color:#fff}
+  .form label{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+  .form input,.form select{width:100%;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:7px;
+        background:#10161d;color:var(--ink)}
+  .two{display:flex;gap:12px}.two>div{flex:1}
+  .frow{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  .frow button{font-size:13px;padding:9px 16px;border:none;border-radius:8px;cursor:pointer;color:#fff}
+  .frow .save{background:var(--accent2)} .frow .cancel{background:#3a4650}
+  @media(max-width:1100px){ .status{display:none} }
+  @media(max-width:720px){ .side{display:none} }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="toprow">
+    <div class="brand">KNOWLEDGE BANK</div>
+    <div class="sbox">
+      <input id="q" type="text" placeholder="search everything - cases, keywords, categories" autocomplete="off">
+      <button class="btn" id="go">Search</button>
+    </div>
+    <button class="btn run" id="run">RUN</button><span id="pendN"></span>
+    <button class="btn ghost" id="wb">Workbench</button>
+    <button class="btn ghost" id="push">Push all</button>
+  </div>
+  <div class="tiles" id="tiles"></div>
+  <div class="subbar" id="subbar" style="display:none"></div>
+</div>
+<div class="wrap">
+  <div class="side empty" id="side"></div>
+  <div class="main">
+    <div class="bar"><h2 id="title">Knowledge Bank</h2><div class="sub" id="sub">Pick a tile above, or search.</div></div>
+    <div id="formHost"></div>
+    <div id="out"></div>
+  </div>
+  <div class="status" id="status">
+    <h4>Status</h4>
+    <div id="statusbody"><div class="hint">RUN progress and errors appear here.</div></div>
+  </div>
+</div>
+<script>
+var q=document.getElementById('q'),go=document.getElementById('go'),tiles=document.getElementById('tiles');
+var subbar=document.getElementById('subbar'),side=document.getElementById('side'),out=document.getElementById('out');
+var titleEl=document.getElementById('title'),subEl=document.getElementById('sub');
+var statusbody=document.getElementById('statusbody'),formHost=document.getElementById('formHost');
+var CURTILE='';
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function stat(html){statusbody.innerHTML=html;}
+
+/* ---------- master tiles ---------- */
+function loadTiles(){
+  google.script.run.withSuccessHandler(function(r){
+    try{
+      document.getElementById('pendN').textContent=(r&&r.pending)?(' '+r.pending):'';
+      var list=(r&&r.tiles)||[];
+      var h=[],i;
+      for(i=0;i<list.length;i++){
+        var tl=list[i];
+        h.push('<div class="tile" data-id="'+esc(tl.id)+'" data-kind="'+esc(tl.kind)+'">'+esc(tl.label)
+          +'<span class="n">'+tl.count+'</span></div>');
+      }
+      tiles.innerHTML=h.join('')||'<span class="hint">Nothing yet. Press RUN to process the drop folder.</span>';
+      var t=tiles.querySelectorAll('.tile'),k;
+      for(k=0;k<t.length;k++)t[k].addEventListener('click',function(){openTile(this.getAttribute('data-id'),this);});
+    }catch(err){
+      tiles.innerHTML='<span class="hint" style="color:var(--err)">Tile render error: '+esc(err&&err.message?err.message:err)+'</span>';
+      stat('<div class="l err">Tile render error: '+esc(err&&err.message?err.message:err)+'</div>');
+    }
+  }).withFailureHandler(function(e){
+    tiles.innerHTML='<span class="hint" style="color:var(--err)">Tile load failed: '+esc(e&&e.message?e.message:e)+'</span>';
+    stat('<div class="l err">Tile load failed: '+esc(e&&e.message?e.message:e)+'</div>');
+  }).tbGetMasterTiles();
+}
+function markTile(el){var t=tiles.querySelectorAll('.tile'),k;for(k=0;k<t.length;k++)t[k].classList.remove('on');if(el)el.classList.add('on');}
+function clearSub(){subbar.style.display='none';subbar.innerHTML='';}
+function showSide(){side.classList.remove('empty');}
+function hideSide(){side.classList.add('empty');side.innerHTML='';}
+
+function openTile(id,el){
+  CURTILE=id;markTile(el);clearSub();formHost.innerHTML='';out.innerHTML='';
+  titleEl.textContent=el?el.textContent.replace(/\d+$/,'').trim():id;subEl.textContent='';
+  google.script.run.withSuccessHandler(function(r){
+    showSide();
+    if(r.kind==='subjects'){
+      side.innerHTML='<h4>Statutes</h4>'+r.items.map(function(it,ix){
+        return '<div class="it" data-ix="'+ix+'" data-kind="statute">'+esc(it.label)
+          +(it.children&&it.children.length?'<span class="n">'+it.children.length+'</span>':'')+'</div>';
+      }).join('');
+      wireSide(r.items);
+    } else if(r.kind==='precedents'){
+      side.innerHTML='<h4>Precedents volumes</h4>'+r.items.map(function(it,ix){
+        return '<div class="it" data-ix="'+ix+'" data-kind="precvol">'+esc(it.label)+'</div>';
+      }).join('');
+      wireSide(r.items);
+    } else {
+      side.innerHTML='<h4>'+esc(r.category)+'</h4>'+ (r.items.length?r.items.map(function(it,ix){
+        return '<div class="it" data-ix="'+ix+'" data-kind="file">'+esc(it.title)+'</div>';
+      }).join(''):'<div class="hint">No files.</div>');
+      wireSideFiles(r.items);
+    }
+  }).tbGetPanel(id);
+}
+
+function markSide(el){var t=side.querySelectorAll('.it'),k;for(k=0;k<t.length;k++)t[k].classList.remove('on');if(el)el.classList.add('on');}
+
+function wireSide(items){
+  var el=side.querySelectorAll('.it'),k;
+  for(k=0;k<el.length;k++)el[k].addEventListener('click',function(){
+    markSide(this);
+    var it=items[this.getAttribute('data-ix')],kind=this.getAttribute('data-kind');
+    if(kind==='statute'){
+      // volumes -> secondary bar. Each child is {url,label} - label is the real volume
+      // name (e.g. "Precedents-2") when known, else a generic "Doc N".
+      if(it.children&&it.children.length){
+        subbar.style.display='flex';
+        subbar.innerHTML=it.children.map(function(c){return '<div class="chip" data-u="'+esc(c.url)+'">'+esc(c.label)+'</div>';}).join('');
+        var ch=subbar.querySelectorAll('.chip'),m;
+        for(m=0;m<ch.length;m++)ch[m].addEventListener('click',function(){window.open(this.getAttribute('data-u'),'_blank');});
+        titleEl.textContent=it.label;subEl.textContent=it.children.length+' volume(s) - open from the bar above.';
+      } else { clearSub();titleEl.textContent=it.label;subEl.textContent='No document yet.'; }
+      out.innerHTML='';
+    } else if(kind==='precvol'){
+      // list judgments inside this volume as a secondary bar
+      titleEl.textContent=it.label;subEl.textContent='Loading judgments…';
+      google.script.run.withSuccessHandler(function(r){
+        subbar.style.display='flex';
+        subbar.innerHTML='<div class="chip" data-open="'+esc(it.url)+'">Open whole '+esc(it.label)+'</div>'
+          + r.items.map(function(j){return '<div class="chip" data-note="'+esc(j.noteLink)+'">'+esc(j.title.substring(0,40))+'</div>';}).join('');
+        subEl.textContent=r.items.length+' judgment(s) in this volume.';
+        var ch=subbar.querySelectorAll('.chip'),m;
+        for(m=0;m<ch.length;m++)ch[m].addEventListener('click',function(){
+          var o=this.getAttribute('data-open'),nt=this.getAttribute('data-note');
+          window.open(o||nt,'_blank');
+        });
+      }).tbGetVolumeJudgments(it.url);
+      out.innerHTML='';
+    }
+  });
+}
+function wireSideFiles(items){
+  var el=side.querySelectorAll('.it'),k;
+  for(k=0;k<el.length;k++)el[k].addEventListener('click',function(){
+    markSide(this);clearSub();
+    var it=items[this.getAttribute('data-ix')];
+    titleEl.textContent=it.title;subEl.textContent='';
+    var h='<div class="card"><p class="t">'+esc(it.title)+'</p>';
+    if(it.keys)h+='<div class="s">'+esc(it.keys.substring(0,400))+'</div>';
+    h+='<div class="a">';
+    if(it.url)h+='<a href="'+esc(it.url)+'" target="_blank" rel="noopener">Open the file →</a>';
+    h+='</div></div>';
+    out.innerHTML=h;
+  });
+}
+
+/* ---------- search ---------- */
+function doSearch(){
+  var t=q.value.replace(/^\s+|\s+$/g,'');
+  if(!t){subEl.textContent='Type something to search.';return;}
+  markTile(null);clearSub();hideSide();formHost.innerHTML='';
+  titleEl.textContent='Search results';subEl.textContent='for “'+t+'”';
+  out.innerHTML='<div class="hint">Searching…</div>';
+  google.script.run.withSuccessHandler(function(r){
+    var n=r.results||[],h=[],i;
+    subEl.textContent=(r.message||(n.length+' result(s)'))+' for “'+t+'”';
+    for(i=0;i<n.length;i++){
+      h.push('<div class="card"><span class="tagr">'+n[i].score+'%</span>');
+      h.push('<p class="t">'+esc(n[i].title||'(untitled)')+'<span class="via">'+esc(n[i].via)+'</span></p>');
+      h.push('<div class="m">'+esc(n[i].category||'')+'</div>');
+      if(n[i].snippet)h.push('<div class="s">'+esc(n[i].snippet)+'</div>');
+      h.push('<div class="a">');
+      if(n[i].noteLink)h.push('<a href="'+esc(n[i].noteLink)+'" target="_blank" rel="noopener">Go to notes →</a>');
+      if(n[i].pdf)h.push('<a href="'+esc(n[i].pdf)+'" target="_blank" rel="noopener">See original PDF →</a>');
+      h.push('</div></div>');
+    }
+    out.innerHTML=n.length?h.join(''):'<div class="hint">'+esc(r.message||'No results.')+'</div>';
+  }).withFailureHandler(function(e){out.innerHTML='<div class="hint">Error: '+esc(e&&e.message?e.message:e)+'</div>';}).tbSearch(t);
+}
+go.addEventListener('click',doSearch);
+q.addEventListener('keydown',function(e){if(e.key==='Enter')doSearch();});
+
+/* ---------- RUN ---------- */
+document.getElementById('run').addEventListener('click',function(){
+  var b=this;b.disabled=true;
+  stat('<div class="run">Processing… leave this open, it can take a few minutes.</div>');
+  google.script.run.withSuccessHandler(function(r){
+    b.disabled=false;
+    var h=['<div class="run">'+esc(r.message||'Done.')+'</div>'],i;
+    var log=r.log||[];
+    for(i=0;i<log.length;i++){
+      var isErr=log[i].indexOf('ERROR')===0;
+      h.push('<div class="l'+(isErr?' err':'')+'">'+esc(log[i])+'</div>');
+    }
+    stat(h.join(''));loadTiles();
+  }).withFailureHandler(function(e){
+    b.disabled=false;stat('<div class="l err">Error: '+esc(e&&e.message?e.message:e)+'</div>');
+  }).tbRunNow();
+});
+
+/* ---------- Workbench ---------- */
+document.getElementById('wb').addEventListener('click',function(){
+  markTile(null);clearSub();hideSide();out.innerHTML='';
+  titleEl.textContent='Workbench';subEl.textContent='Add a slot, write your note in the doc, then Push all.';
+  google.script.run.withSuccessHandler(function(sr){
+    var stats=sr.statutes||[];
+    var h=['<div class="form"><h3>Add a slot to the Workbench</h3>'];
+    h.push('<div class="two"><div><label>Statute</label><select id="wS"><option value="">— pick —</option>');
+    for(var i=0;i<stats.length;i++)h.push('<option>'+esc(stats[i])+'</option>');
+    h.push('</select></div><div><label>… or type new</label><input id="wSt"></div></div>');
+    h.push('<div class="two"><div><label>Nomenclature</label><input id="wN" value="Judgment"></div>');
+    h.push('<div><label>Citation</label><input id="wC"></div></div>');
+    h.push('<label>Case / title</label><input id="wT">');
+    h.push('<label>PDF file name in drop folder (optional)</label><input id="wP">');
+    h.push('<div class="frow"><button class="save" id="wAdd">Add slot &amp; open doc</button>');
+    h.push('<a class="btn ghost" id="wOpen" style="text-decoration:none;padding:9px 16px">Open Workbench</a>');
+    h.push('<span class="hint" id="wM"></span></div></div>');
+    formHost.innerHTML=h.join('');
+    document.getElementById('wOpen').addEventListener('click',function(ev){
+      ev.preventDefault();
+      google.script.run.withSuccessHandler(function(u){window.open(u.url,'_blank');}).tbWorkbenchUrl();
+    });
+    document.getElementById('wAdd').addEventListener('click',function(){
+      var s=document.getElementById('wSt').value||document.getElementById('wS').value;
+      var m=document.getElementById('wM');m.textContent='Adding…';
+      google.script.run.withSuccessHandler(function(r){
+        m.textContent=r.message;if(r.ok&&r.url)window.open(r.url,'_blank');
+      }).tbAddSlot(s,document.getElementById('wN').value,document.getElementById('wT').value,
+                   document.getElementById('wC').value,document.getElementById('wP').value);
+    });
+  }).tbGetStatuteNames();
+});
+document.getElementById('push').addEventListener('click',function(){
+  var b=this;b.disabled=true;stat('<div class="run">Pushing the Workbench…</div>');
+  google.script.run.withSuccessHandler(function(r){
+    b.disabled=false;
+    var h=['<div class="run">'+esc(r.message)+'</div>'],i;
+    var d=r.details||[];
+    for(i=0;i<d.length;i++){var e=d[i].indexOf('FAIL')!==-1;h.push('<div class="l'+(e?' err':'')+'">'+esc(d[i])+'</div>');}
+    stat(h.join(''));loadTiles();
+  }).withFailureHandler(function(e){b.disabled=false;stat('<div class="l err">Error: '+esc(e)+'</div>');}).tbPushWorkbench();
+});
+
+loadTiles();
+</script>
+</body>
+</html>
