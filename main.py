@@ -18,15 +18,24 @@ def init_db():
   c.execute('INSERT OR IGNORE INTO state(key,value) VALUES(?,?)',('dashboard',json.dumps(initial)))
 init_db()
 def chartink_scan():
- if not SCAN_CLAUSE:
-  raise RuntimeError('CHARTINK_SCAN_CLAUSE is not configured. Configure the scan clause for the saved Chartink scanner.')
  with requests.Session() as s:
   page=s.get(CHARTINK_URL,timeout=25);page.raise_for_status()
-  m=re.search(r'<meta[^>]+name=["\\']csrf-token["\\'][^>]+content=["\\']([^"\\']+)',page.text,re.I)
-  if not m: raise RuntimeError('Chartink CSRF token not found in scanner page.')
-  resp=s.post('https://chartink.com/screener/process',headers={'X-CSRF-TOKEN':m.group(1),'X-Requested-With':'XMLHttpRequest'},data={'scan_clause':clause},timeout=35)
-  resp.raise_for_status();data=resp.json()
-  return data.get('data',[])
+  clause=SCAN_CLAUSE
+  if not clause:
+   match=re.search(r'"scan_clause"\\s*:\\s*"([^"]+)"',page.text)
+   if match:
+    try: clause=json.loads('"'+match.group(1)+'"')
+    except Exception: clause=html.unescape(match.group(1))
+   if not clause:
+    match=re.search(r"scan_clause\\s*=\\s*['\\"]([^'\\"]+)",page.text)
+    if match: clause=html.unescape(match.group(1))
+  if not clause:
+   raise RuntimeError('Could not extract the scan clause from the saved Chartink page. Set CHARTINK_SCAN_CLAUSE in Railway variables.')
+  csrf=re.search(r'<meta[^>]+name=["\\']csrf-token["\\'][^>]+content=["\\']([^"\\']+)',page.text,re.I)
+  if not csrf: raise RuntimeError('Chartink CSRF token not found on scanner page.')
+  resp=s.post('https://chartink.com/screener/process',headers={'X-CSRF-TOKEN':csrf.group(1),'X-Requested-With':'XMLHttpRequest'},data={'scan_clause':clause},timeout=35)
+  resp.raise_for_status()
+  return resp.json().get('data',[])
 @app.get('/',response_class=HTMLResponse)
 def home():return HTML
 @app.get('/api/state')
