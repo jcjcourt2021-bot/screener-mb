@@ -24,7 +24,7 @@ def chartink_scan():
   page=s.get(CHARTINK_URL,timeout=25);page.raise_for_status()
   m=re.search(r'<meta[^>]+name=["\\']csrf-token["\\'][^>]+content=["\\']([^"\\']+)',page.text,re.I)
   if not m: raise RuntimeError('Chartink CSRF token not found in scanner page.')
-  resp=s.post('https://chartink.com/screener/process',headers={'X-CSRF-TOKEN':m.group(1),'X-Requested-With':'XMLHttpRequest'},data={'scan_clause':SCAN_CLAUSE},timeout=35)
+  resp=s.post('https://chartink.com/screener/process',headers={'X-CSRF-TOKEN':m.group(1),'X-Requested-With':'XMLHttpRequest'},data={'scan_clause':clause},timeout=35)
   resp.raise_for_status();data=resp.json()
   return data.get('data',[])
 @app.get('/',response_class=HTMLResponse)
