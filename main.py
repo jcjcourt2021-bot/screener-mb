@@ -22,16 +22,16 @@ def chartink_scan():
   page=s.get(CHARTINK_URL,timeout=25);page.raise_for_status()
   clause=SCAN_CLAUSE
   if not clause:
-   match=re.search(r'"scan_clause"\\s*:\\s*"([^"]+)"',page.text)
+   match=re.search(r'"scan_clause"\s*:\s*"([^"]+)"',page.text)
    if match:
     try: clause=json.loads('"'+match.group(1)+'"')
     except Exception: clause=html.unescape(match.group(1))
    if not clause:
-    match=re.search(r"scan_clause\\s*=\\s*['\\"]([^'\\"]+)",page.text)
+    match=re.search(r"scan_clause\s*=\s*['\"]([^'\"]+)",page.text)
     if match: clause=html.unescape(match.group(1))
   if not clause:
    raise RuntimeError('Could not extract the scan clause from the saved Chartink page. Set CHARTINK_SCAN_CLAUSE in Railway variables.')
-  csrf=re.search(r'<meta[^>]+name=["\\']csrf-token["\\'][^>]+content=["\\']([^"\\']+)',page.text,re.I)
+  csrf=re.search(r'name="csrf-token"\s+content="([^"]+)',page.text,re.I)
   if not csrf: raise RuntimeError('Chartink CSRF token not found on scanner page.')
   resp=s.post('https://chartink.com/screener/process',headers={'X-CSRF-TOKEN':csrf.group(1),'X-Requested-With':'XMLHttpRequest'},data={'scan_clause':clause},timeout=35)
   resp.raise_for_status()
